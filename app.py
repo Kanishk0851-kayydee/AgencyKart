@@ -6,6 +6,7 @@ import time
 st.set_page_config(page_title="AgencyKart | Scale Smarter", page_icon="🚀", layout="wide")
 
 # --- CUSTOM CSS ---
+# Fixed the parameter from 'unsafe_base64' to 'unsafe_allow_html' to resolve deployment crashes
 st.markdown("""
     <style>
     .main { background-color: #020617; color: #f8fafc; }
@@ -15,7 +16,7 @@ st.markdown("""
     .agency-card { background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 10px; }
     .priority-badge { background-color: #2dd4bf; color: #020617; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
     </style>
-    """, unsafe_base64=True)
+    """, unsafe_allow_html=True)
 
 # --- SESSION STATE INITIALIZATION ---
 if 'briefs' not in st.session_state:
@@ -42,11 +43,11 @@ if page == "Home":
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown("<div class='metric-card'><h3>63M+</h3><p>MSMEs in India</p></div>", unsafe_base64=True)
+        st.markdown("<div class='metric-card'><h3>63M+</h3><p>MSMEs in India</p></div>", unsafe_allow_html=True)
     with col2:
-        st.markdown("<div class='metric-card'><h3>₹1.2L</h3><p>Avg. Loss per Bad Hire</p></div>", unsafe_base64=True)
+        st.markdown("<div class='metric-card'><h3>₹1.2L</h3><p>Avg. Loss per Bad Hire</p></div>", unsafe_allow_html=True)
     with col3:
-        st.markdown("<div class='metric-card'><h3>100%</h3><p>Escrow Security</p></div>", unsafe_base64=True)
+        st.markdown("<div class='metric-card'><h3>100%</h3><p>Escrow Security</p></div>", unsafe_allow_html=True)
 
     st.write("---")
     st.write("### Why AgencyKart?")
@@ -88,8 +89,8 @@ elif page == "For Businesses (AI Brief)":
                 with st.container():
                     col_a, col_b = st.columns([3, 1])
                     with col_a:
-                        priority = "<span class='priority-badge'>FEATURED</span>" if agency['priority'] else ""
-                        st.markdown(f"**{agency['name']}** {priority}")
+                        priority_tag = "<span class='priority-badge'>FEATURED</span>" if agency['priority'] else ""
+                        st.markdown(f"**{agency['name']}** {priority_tag}", unsafe_allow_html=True)
                         st.caption(f"Rating: ⭐ {agency['score']} | Niche: {agency['niche']} | Cost: {agency['price']}")
                     with col_b:
                         if st.button(f"Hire {agency['name']}", key=agency['name']):
@@ -113,7 +114,7 @@ elif page == "For Agencies (Leads)":
     st.write("---")
     st.subheader("📈 Boost Your Agency Visibility")
     st.info("Agencies using **Priority Placement** receive 3.4x more leads.")
-    if st.button("Enable Priority Placement (Zomato-style)"):
+    if st.button("Enable Priority Placement"):
         st.success("Your agency is now a 'Featured Partner'!")
 
 # --- PROJECT DASHBOARD: ESCROW ---
@@ -124,7 +125,7 @@ elif page == "Project Dashboard (Escrow)":
     with col1:
         st.metric("Payment Status", st.session_state.escrow_status)
     with col2:
-        st.metric("Project Progress", "45%" if st.session_state.escrow_status == "Locked in Escrow" else "0%")
+        st.metric("Project Progress", "45%" if "Escrow" in st.session_state.escrow_status else "0%")
     
     st.write("---")
     st.subheader("Milestone Tracking")
@@ -136,8 +137,8 @@ elif page == "Project Dashboard (Escrow)":
         st.write("**Milestone 2:** Backend Integration")
         st.write("Status: ⏳ In Progress")
 
-    if st.session_state.escrow_status == "Locked in Escrow":
+    if "Locked" in st.session_state.escrow_status:
         if st.button("Approve Milestone 1 & Release Funds"):
             st.session_state.escrow_status = "Funds Released (M1)"
             st.balloons()
-            st.success("Payment of ₹25,000 released to the agency.")
+            st.success("Payment released to the agency.")
