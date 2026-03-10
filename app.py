@@ -63,23 +63,27 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- SESSION STATE INITIALIZATION (Linking the Portals) ---
+# --- SESSION STATE INITIALIZATION ---
 if 'active_projects' not in st.session_state:
     st.session_state.active_projects = [
-        {"id": "AK-992", "name": "E-Commerce Rebranding", "agency": "PixelPerfect", "status": "In Progress", "progress": 65, "escrow": 45000, "milestone": "UI Design"},
-        {"id": "AK-401", "name": "AI Chatbot Integration", "agency": "TechFlow", "status": "Pending Brief", "progress": 10, "escrow": 12000, "milestone": "Setup"}
+        {"id": "AK-992", "business": "PVR Cinemas", "name": "Mobile App UI", "agency": "PixelPerfect", "status": "In Progress", "progress": 65, "vault": 45000, "milestone": "UI Design"},
+        {"id": "AK-401", "business": "Zomato", "name": "Chatbot API", "agency": "PixelPerfect", "status": "Pending Brief", "progress": 10, "vault": 12000, "milestone": "Setup"}
     ]
 
-if 'open_leads' not in st.session_state:
-    st.session_state.open_leads = [
-        {"id": "L-001", "title": "Fintech Mobile App", "budget": "₹4L", "timeline": "3 Months", "desc": "Looking for a React Native expert to build a secure wallet app."}
-    ]
+if 'brief_generated' not in st.session_state:
+    st.session_state.brief_generated = False
 
 if 'project_submissions' not in st.session_state:
     st.session_state.project_submissions = []
 
 if 'messages' not in st.session_state:
-    st.session_state.messages = [{"role": "agency", "text": "Hi! We've started on the UI moodboards. Any specific preferences for the color palette?"}]
+    st.session_state.messages = [{"role": "agency", "text": "Hi! We've started on the UI moodboards. Any specific preferences?"}]
+
+# --- MOCK AGENCY DATA FOR MATCHMAKING ---
+MATCH_AGENCIES = [
+    {"name": "PixelPerfect Digital", "specialization": "UI/UX & Branding", "match": "98%", "bio": "Top-tier design studio focused on conversion-driven aesthetics."},
+    {"name": "CodeCrafters India", "specialization": "Full-Stack Web Dev", "match": "92%", "bio": "Experts in scalable MERN stack applications for SMEs."}
+]
 
 # --- SIDEBAR CONTROL CENTER ---
 with st.sidebar:
@@ -92,7 +96,7 @@ with st.sidebar:
     st.markdown("---")
     user_role = st.selectbox("Select Workspace", ["Business Dashboard", "Agency Portal"])
     st.markdown("---")
-    if st.button("Reset Portal Data"):
+    if st.button("Reset All Portal Data"):
         st.session_state.clear()
         st.rerun()
     st.caption(f"Active View: {user_role}")
@@ -100,9 +104,9 @@ with st.sidebar:
 # --- BUSINESS DASHBOARD ---
 if "Business" in user_role:
     st.title("🏢 Business Project Portal")
-    st.markdown("Manage agency deliverables and verify project milestones.")
+    st.markdown("Manage your agency partners, track work, and release vault payments.")
     
-    tabs = st.tabs(["📊 Active Projects", "📩 Communication", "📑 Launch New Brief"])
+    tabs = st.tabs(["📊 My Active Projects", "📩 Agency Chat", "📑 Hire & Brief Agencies"])
     
     with tabs[0]:
         for i, p in enumerate(st.session_state.active_projects):
@@ -120,87 +124,152 @@ if "Business" in user_role:
                 # Dynamic Submissions from Agency
                 subs = [s for s in st.session_state.project_submissions if s['project_id'] == p['id']]
                 if subs:
-                    st.write("📂 **New Deliverables Received:**")
+                    st.write("📂 **New Deliverables for Review:**")
                     for sub in subs:
                         col_s1, col_s2 = st.columns([3, 1])
                         col_s1.info(f"📄 {sub['filename']} (Sent: {sub['timestamp']})")
-                        if col_s2.button("Approve & Release Funds", key=f"app_{sub['filename']}"):
+                        if col_s2.button("Approve & Release Vault Payment", key=f"app_{sub['filename']}"):
                             st.session_state.active_projects[i]['status'] = "Complete"
                             st.session_state.active_projects[i]['progress'] = 100
                             st.balloons()
                             st.rerun()
                 
-                st.progress(p['progress'] / 100)
+                col_p1, col_p2 = st.columns([3, 1])
+                col_p1.progress(p['progress'] / 100)
+                col_p2.write(f"Secure Vault: ₹{p['vault']:,}")
 
     with tabs[1]:
-        st.subheader("Messaging Hub")
-        for msg in st.session_state.messages:
-            div_class = "chat-agency" if msg['role'] == "agency" else "chat-user"
-            st.markdown(f'<div class="chat-bubble {div_class}">{msg["text"]}</div>', unsafe_allow_html=True)
+        st.subheader("Direct Communication Hub")
+        st.caption("Ask your agency for a status update or share feedback.")
         
-        with st.form("chat_bus", clear_on_submit=True):
-            user_input = st.text_input("Reply to your agency...")
-            if st.form_submit_button("Send"):
-                st.session_state.messages.append({"role": "user", "text": user_input})
+        chat_col, action_col = st.columns([3, 1])
+        
+        with chat_col:
+            for msg in st.session_state.messages:
+                div_class = "chat-agency" if msg['role'] == "agency" else "chat-user"
+                st.markdown(f'<div class="chat-bubble {div_class}">{msg["text"]}</div>', unsafe_allow_html=True)
+            
+            with st.form("chat_bus", clear_on_submit=True):
+                user_input = st.text_input("Message the agency...")
+                if st.form_submit_button("Send"):
+                    st.session_state.messages.append({"role": "user", "text": user_input})
+                    st.rerun()
+        
+        with action_col:
+            st.markdown("### Quick Nudges")
+            if st.button("Request Status Update"):
+                st.session_state.messages.append({"role": "user", "text": "Hi, could you please provide a quick status update on the current milestone?"})
+                st.toast("Status request sent!")
                 st.rerun()
 
     with tabs[2]:
-        st.subheader("AI Briefing & Matchmaking")
+        st.subheader("AI Briefing & Discovery")
+        st.write("Input your project goals to generate a technical brief and find the best agency match.")
+        
         with st.form("ai_brief"):
-            h = st.text_input("Project Name")
-            d = st.text_area("Detailed Requirements")
-            if st.form_submit_button("Generate Brief & Match"):
-                st.session_state.open_leads.append({"id": f"L-{int(time.time())}", "title": h, "desc": d, "budget": "TBD", "timeline": "TBD"})
-                st.success("AI Brief Generated! Project listed for agencies.")
-                st.markdown("### 🎯 Top Matches Found")
-                st.markdown("1. **PixelPerfect** (98% Match) - UI/UX Experts  \n2. **CodeCrafters** (92% Match) - App Dev")
+            h = st.text_input("Project Name", placeholder="e.g. E-commerce App")
+            d = st.text_area("What are you looking to build?", placeholder="Describe features, goals, and style...")
+            if st.form_submit_button("Generate AI Brief & Match"):
+                with st.spinner("AI analyzing requirements and vetting agencies..."):
+                    time.sleep(1.5)
+                    st.session_state.brief_generated = True
+        
+        if st.session_state.brief_generated:
+            st.success("✅ Technical Brief Generated! Your project is now being matched with top Indian agencies.")
+            
+            st.markdown("### 🎯 Recommended Top Agency Matches")
+            for agency in MATCH_AGENCIES:
+                with st.container():
+                    st.markdown(f"""
+                    <div class="portal-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <h4 style="color: #2ec4d1; margin:0;">{agency['name']}</h4>
+                                <p style="font-size: 14px; color: #94a3b8; margin:5px 0;">Specialization: <b>{agency['specialization']}</b></p>
+                            </div>
+                            <div class="match-score">{agency['match']}</div>
+                        </div>
+                        <p style="font-size: 14px;">{agency['bio']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"Request Proposal from {agency['name']}", key=f"req_{agency['name']}"):
+                        st.info(f"Proposal request sent to {agency['name']}. They will contact you shortly.")
 
 # --- AGENCY PORTAL ---
 else:
     st.title("🚀 Agency Operations Hub")
-    st.markdown("Submit work, manage escrow, and discover new business opportunities.")
+    st.markdown("Manage client projects, submit work for review, and discover new business.")
     
-    tabs = st.tabs(["💼 Current Work", "🔍 New Lead Market", "💰 Financials"])
+    tabs = st.tabs(["💼 Manage Clients", "🔍 New Market Leads", "💰 Payment Vaults"])
     
     with tabs[0]:
-        st.subheader("Project Deliverables")
-        sel_proj_name = st.selectbox("Select Project", [p['name'] for p in st.session_state.active_projects])
-        sel_proj = next(p for p in st.session_state.active_projects if p['name'] == sel_proj_name)
+        st.subheader("Your Active Clients")
+        businesses = list(set([p['business'] for p in st.session_state.active_projects]))
         
-        st.write("### Upload Submission")
-        file_up = st.file_uploader("Upload milestone file (PDF/ZIP/Figma)", key="agency_up")
-        if file_up and st.button("Submit to Client"):
-            st.session_state.project_submissions.append({
-                "project_id": sel_proj['id'], "filename": file_up.name, "timestamp": datetime.now().strftime("%H:%M")
-            })
-            st.success("Work submitted! The client will be notified.")
-            st.rerun()
+        selected_biz = st.selectbox("Select Business Name to View Projects", businesses)
+        
+        if selected_biz:
+            st.write(f"### Projects for **{selected_biz}**")
+            biz_projects = [p for p in st.session_state.active_projects if p['business'] == selected_biz]
             
-        st.write("---")
-        st.write("### Review Your Submissions")
-        for s in [s for s in st.session_state.project_submissions if s['project_id'] == sel_proj['id']]:
-            col_f1, col_f2 = st.columns([3, 1])
-            col_f1.write(f"📄 {s['filename']}")
-            if col_f2.button("Delete / Retract", key=f"del_{s['filename']}"):
-                st.session_state.project_submissions.remove(s)
-                st.warning("Submission retracted.")
-                st.rerun()
+            for p in biz_projects:
+                with st.container():
+                    st.markdown(f"""
+                    <div class="portal-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <b>Project: {p['name']}</b>
+                            <span class="status-pill status-active">Active Milestone: {p['milestone']}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col_u1, col_u2 = st.columns([3, 1])
+                    with col_u1:
+                        f_up = st.file_uploader(f"Upload work for {p['name']}", key=f"up_{p['id']}")
+                        if f_up and st.button("Submit Work to Client", key=f"btn_{p['id']}"):
+                            st.session_state.project_submissions.append({
+                                "project_id": p['id'], 
+                                "filename": f_up.name, 
+                                "timestamp": datetime.now().strftime("%H:%M")
+                            })
+                            st.success("Work submitted! Client notified.")
+                            st.rerun()
+                    
+                    with col_u2:
+                        st.write("### Manage Submissions")
+                        # Show and delete submissions
+                        p_subs = [s for s in st.session_state.project_submissions if s['project_id'] == p['id']]
+                        for s in p_subs:
+                            st.caption(f"📄 {s['filename']}")
+                            if st.button("Delete / Retract", key=f"del_{s['filename']}_{p['id']}"):
+                                st.session_state.project_submissions.remove(s)
+                                st.warning("Work retracted.")
+                                st.rerun()
 
     with tabs[1]:
-        st.subheader("Marketplace Leads")
-        for lead in st.session_state.open_leads:
-            st.markdown(f"""
-            <div class="portal-card">
-                <h4 style="color: #2ec4d1;">{lead['title']}</h4>
-                <p>{lead['desc']}</p>
-                <small>Budget: {lead['budget']}</small>
-            </div>
-            """, unsafe_allow_html=True)
-            st.button("Submit Proposal", key=f"bid_{lead['id']}")
+        st.subheader("Qualified Market Opportunities")
+        st.markdown("""
+        <div class="portal-card">
+            <h4 style="color: #2ec4d1;">Fintech Dashboard Design</h4>
+            <p>SME looking for a secure dashboard with data visualization. Budget: ₹1.5L - ₹3L.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Submit Proposal for Lead")
 
     with tabs[2]:
-        st.metric("Total Secured in Escrow", f"₹{sum(p['escrow'] for p in st.session_state.active_projects if p['status'] != 'Complete'):,}")
-        st.table(pd.DataFrame(st.session_state.active_projects))
+        st.subheader("Secure Pay Vaults (Escrow)")
+        st.metric("Total Funds Protected", f"₹{sum(p['vault'] for p in st.session_state.active_projects if p['status'] != 'Complete'):,}")
+        
+        # Payment Table
+        pay_data = []
+        for p in st.session_state.active_projects:
+            pay_data.append({
+                "Business": p['business'],
+                "Project": p['name'],
+                "Vault Amount": f"₹{p['vault']:,}",
+                "Status": "Released" if p['status'] == "Complete" else "Protected"
+            })
+        st.table(pd.DataFrame(pay_data))
 
 st.markdown("---")
-st.caption("AgencyKart Portal v2.7 | Use top-left arrow to hide sidebar for Presentation Mode.")
+st.caption("AgencyKart Portal v2.8 | Built for Secure B2B Partnerships")
