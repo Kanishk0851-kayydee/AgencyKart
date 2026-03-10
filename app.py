@@ -110,6 +110,10 @@ if 'messages' not in st.session_state:
     st.session_state.messages = [{"role": "agency", "text": "Hi there! We've uploaded the initial moodboards. Please check the 'Active Projects' tab to review them."}]
 if 'paying_project_id' not in st.session_state:
     st.session_state.paying_project_id = None
+if 'open_leads' not in st.session_state:
+    st.session_state.open_leads = [
+        {"id": "L-001", "title": "Fintech App Design", "desc": "Looking for a high-fidelity dashboard for a personal finance app.", "budget": "₹2.5L", "requested_from": "General"}
+    ]
 
 # --- MOCK AGENCY DATA ---
 MATCH_AGENCIES = [
@@ -256,11 +260,35 @@ if "Business" in user_role:
         
         if st.session_state.brief_generated:
             st.success("✅ Technical Brief Generated!")
-            st.markdown(f'<div class="portal-card"><b>Brief:</b> {st.session_state.generated_brief_data["desc"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="portal-card"><b>Brief Summary:</b><br>{st.session_state.generated_brief_data["desc"]}</div>', unsafe_allow_html=True)
+            
+            st.write("### 🎯 Best Matches for Your Project")
             for agency in MATCH_AGENCIES:
                 with st.container():
-                    st.markdown(f'<div class="portal-card"><b>{agency["name"]}</b> ({agency["match"]})<br><small>{agency["specialization"]}</small></div>', unsafe_allow_html=True)
-                    st.button(f"Request Proposal from {agency['name']}", key=f"req_{agency['name']}")
+                    st.markdown(f"""
+                    <div class="portal-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <b style="font-size: 1.2rem;">{agency['name']}</b> ({agency['match']})<br>
+                                <small style="color: #2ec4d1;">{agency['specialization']}</small>
+                            </div>
+                            <div class="match-score">{agency['match']}</div>
+                        </div>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">{agency['bio']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button(f"Request Proposal from {agency['name']}", key=f"req_{agency['name']}"):
+                        # Link the proposal request to the Agency Lead Market
+                        new_lead = {
+                            "id": f"L-{int(time.time())}",
+                            "title": st.session_state.generated_brief_data["name"],
+                            "desc": st.session_state.generated_brief_data["desc"],
+                            "budget": st.session_state.generated_brief_data["budget"],
+                            "requested_from": agency['name']
+                        }
+                        st.session_state.open_leads.append(new_lead)
+                        st.info(f"Proposal request sent to {agency['name']}. It is now visible in their Lead Market.")
 
 # --- AGENCY PORTAL ---
 else:
@@ -285,9 +313,25 @@ else:
         render_chat_hub('agency')
 
     with tabs[2]:
-        st.subheader("New Opportunities")
-        st.markdown('<div class="portal-card"><b>Fintech App</b> - Budget: ₹2.5L</div>', unsafe_allow_html=True)
-        st.button("Submit Proposal")
+        st.subheader("New Opportunities & Direct Inquiries")
+        if st.session_state.open_leads:
+            for lead in st.session_state.open_leads:
+                is_direct = lead.get('requested_from') != "General"
+                req_info = f"🎯 **Direct Inquiry for: {lead['requested_from']}**" if is_direct else "🌐 Public Opportunity"
+                
+                st.markdown(f"""
+                <div class="portal-card" style="border-left: 5px solid {'#2ec4d1' if is_direct else '#334155'};">
+                    <div style="display: flex; justify-content: space-between;">
+                        <b style="font-size: 1.1rem;">{lead['title']}</b>
+                        <span style="color: {'#2ec4d1' if is_direct else '#94a3b8'};">{req_info}</span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.9rem;">{lead['desc']}</p>
+                    <p style="color: #2ec4d1; font-weight: bold;">Budget: {lead['budget']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                st.button("Submit Proposal", key=f"bid_{lead['id']}")
+        else:
+            st.info("No new leads available at the moment.")
 
     with tabs[3]:
         st.subheader("Secure Pay Vaults & Earnings")
