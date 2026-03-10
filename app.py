@@ -6,18 +6,19 @@ from datetime import datetime
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="AgencyKart Portal | Scale Smarter", page_icon="🚀", layout="wide")
 
-# --- CUSTOM THEMING & CSS ---
+# --- CUSTOM THEMING & CSS (Matched to Logo Colors) ---
+# Primary Cyan: #2ec4d1 | Dark Navy: #0b1a32 | Medium Navy: #162a4a
 st.markdown("""
     <style>
-    .main { background-color: #020617; color: #f8fafc; }
-    [data-testid="stSidebar"] { background-color: #0f172a; border-right: 1px solid #1e293b; }
+    .main { background-color: #0b1a32; color: #f8fafc; }
+    [data-testid="stSidebar"] { background-color: #0b1a32; border-right: 1px solid #162a4a; }
     
     /* Portal Cards */
     .portal-card {
-        background: #1e293b;
+        background: #162a4a;
         padding: 24px;
         border-radius: 16px;
-        border: 1px solid #334155;
+        border: 1px solid #243b61;
         margin-bottom: 20px;
     }
     
@@ -29,16 +30,28 @@ st.markdown("""
         font-weight: bold;
         text-transform: uppercase;
     }
-    .status-active { background-color: #065f46; color: #34d399; }
+    .status-active { background-color: rgba(46, 196, 209, 0.2); color: #2ec4d1; border: 1px solid #2ec4d1; }
     .status-pending { background-color: #7c2d12; color: #fb923c; }
     
     /* Buttons */
     .stButton>button {
+        background-color: #2ec4d1;
+        color: #0b1a32;
         border-radius: 10px;
-        font-weight: 600;
+        font-weight: 700;
+        border: none;
         transition: all 0.3s;
     }
+    .stButton>button:hover {
+        background-color: #f8fafc;
+        color: #2ec4d1;
+    }
     
+    /* Progress Bar Color Override */
+    div[data-baseweb="progress-bar"] > div > div {
+        background-color: #2ec4d1 !important;
+    }
+
     /* Chat bubbles */
     .chat-bubble {
         padding: 10px 15px;
@@ -46,14 +59,14 @@ st.markdown("""
         margin-bottom: 10px;
         max-width: 80%;
     }
-    .chat-user { background: #0ea5e9; color: white; align-self: flex-end; margin-left: auto; }
-    .chat-agency { background: #334155; color: #f8fafc; }
+    .chat-user { background: #2ec4d1; color: #0b1a32; align-self: flex-end; margin-left: auto; font-weight: 500; }
+    .chat-agency { background: #243b61; color: #f8fafc; border: 1px solid #2ec4d1; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- SESSION STATE ---
 if 'user_role' not in st.session_state:
-    st.session_state.user_role = "Business"
+    st.session_state.user_role = "Business Dashboard"
 if 'messages' not in st.session_state:
     st.session_state.messages = [{"role": "agency", "text": "Hi! We've started on the UI wireframes. Any specific feedback on the moodboard?"}]
 if 'project_submissions' not in st.session_state:
@@ -67,8 +80,9 @@ PROJECTS = [
 
 # --- SIDEBAR ROLE SWITCHER ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3140/3140343.png", width=80)
-    st.title("AgencyKart")
+    # Using your uploaded logo file
+    st.image("Logo-1920*1080.jpg", use_container_width=True)
+    st.markdown("<h2 style='text-align: center; color: #2ec4d1; font-size: 1.2rem;'>Control Center</h2>", unsafe_allow_html=True)
     st.markdown("---")
     st.session_state.user_role = st.selectbox("Switch Workspace", ["Business Dashboard", "Agency Portal"])
     st.markdown("---")
@@ -87,10 +101,10 @@ if "Business" in st.session_state.user_role:
                 st.markdown(f"""
                 <div class="portal-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3>{p['name']} <span class="status-pill status-active">{p['status']}</span></h3>
-                        <p style="color: #2dd4bf; font-weight: bold;">{p['id']}</p>
+                        <h3 style="color: #f8fafc;">{p['name']} <span class="status-pill status-active">{p['status']}</span></h3>
+                        <p style="color: #2ec4d1; font-weight: bold;">{p['id']}</p>
                     </div>
-                    <p>Agency: <b>{p['agency']} Digital</b></p>
+                    <p>Agency: <b style="color: #2ec4d1;">{p['agency']} Digital</b></p>
                     <div style="margin: 15px 0;">
                         <small>Completion Progress: {p['progress']}%</small>
                     </div>
@@ -115,7 +129,7 @@ if "Business" in st.session_state.user_role:
         
         with st.form("chat_form", clear_on_submit=True):
             user_msg = st.text_input("Type your message...")
-            if st.form_submit_button("Send"):
+            if st.form_submit_button("Send Message"):
                 st.session_state.messages.append({"role": "user", "text": user_msg})
                 st.rerun()
 
@@ -141,7 +155,7 @@ else:
         
         st.markdown(f"""
         <div class="portal-card">
-            <h4>Work-room: {selected_proj}</h4>
+            <h4 style="color: #2ec4d1;">Work-room: {selected_proj}</h4>
             <p>Milestone 2: Backend API Integration</p>
             <p>Deadline: Oct 25, 2023</p>
         </div>
@@ -167,11 +181,11 @@ else:
         st.markdown("""
         <div class="portal-card">
             <div style="display: flex; justify-content: space-between;">
-                <b>Mobile App for Fintech Startup</b>
+                <b style="color: #f8fafc;">Mobile App for Fintech Startup</b>
                 <span class="status-pill status-pending">High Match</span>
             </div>
             <p style="font-size: 14px; margin-top:10px;">Budget: ₹2.5L - ₹4L | Timeline: 3 Months</p>
-            <button style="width: 100%; padding: 8px; margin-top: 10px; background: #2dd4bf; border: none; border-radius: 5px; color: #020617; font-weight: bold;">Apply with Proposal</button>
+            <button style="width: 100%; padding: 10px; margin-top: 10px; background: #2ec4d1; border: none; border-radius: 8px; color: #0b1a32; font-weight: bold; cursor: pointer;">Apply with Proposal</button>
         </div>
         """, unsafe_allow_html=True)
 
@@ -187,4 +201,4 @@ else:
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("AgencyKart Portal v2.0 - Encrypted Milestone-based Ecosystem")
+st.caption("AgencyKart Portal v2.0 - Secure Milestone-based Ecosystem | Powered by Scale Smarter™")
