@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM THEMING & CSS ---
+# --- CUSTOM THEMING & CSS (Logo Matched: Navy & Cyan) ---
 st.markdown("""
     <style>
     .main { background-color: #0b1a32; color: #f8fafc; }
@@ -64,11 +64,12 @@ st.markdown("""
     
     /* Payment Modal Style */
     .payment-modal {
-        background: #0b1a32;
-        padding: 20px;
+        background: #020617;
+        padding: 25px;
         border-radius: 15px;
         border: 2px solid #2ec4d1;
-        margin-top: 10px;
+        margin-top: 15px;
+        margin-bottom: 25px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -138,7 +139,7 @@ with st.sidebar:
 
 # --- SHARED CHAT ---
 def render_chat_hub(current_role):
-    st.subheader(f"Direct Communication with {'Agency' if current_role == 'business' else 'Client'}")
+    st.subheader(f"Direct Communication Hub")
     chat_col, action_col = st.columns([3, 1])
     with chat_col:
         for msg in st.session_state.messages:
@@ -190,50 +191,64 @@ if "Business" in user_role:
                     for sub in subs:
                         col_s1, col_s2 = st.columns([3, 1])
                         col_s1.info(f"📄 {sub['filename']} (Sent: {sub['timestamp']})")
-                        if col_s2.button("Review & Release Payment", key=f"pay_trig_{sub['filename']}"):
+                        if col_s2.button("Partial / Full Payment Release", key=f"pay_trig_{sub['filename']}"):
                             st.session_state.paying_project_id = p['id']
                 
-                # THE PAYMENT MODAL (Conditional UI)
+                # THE PARTIAL PAYMENT MODAL
                 if st.session_state.paying_project_id == p['id']:
                     st.markdown('<div class="payment-modal">', unsafe_allow_html=True)
-                    st.subheader("🏦 Release Vault Payment")
-                    st.write(f"**Total Proposal Quote:** ₹{p['total_quote']:,}")
+                    st.subheader("💰 Partial Payment Release")
+                    
+                    st.write(f"**Total Project Quote:** ₹{p['total_quote']:,}")
                     
                     if p['paid_history']:
-                        st.write("**Payment History:**")
+                        st.write("**Previous Payments Made:**")
                         for history in p['paid_history']:
-                            st.caption(f"- ₹{history['amount']:,} released on {history['date']}")
-                    else:
-                        st.caption("No previous payments made.")
-                        
-                    st.write(f"**Remaining Balance in Vault:** :green[₹{remaining:,}]")
+                            st.caption(f"✅ ₹{history['amount']:,} released on {history['date']}")
                     
-                    amount_to_pay = st.number_input("Enter Amount to Release Now (₹)", min_value=0, max_value=remaining, step=5000, key=f"amt_{p['id']}")
+                    st.markdown(f"**Current Balance in Secure Pay Vault:** :green[₹{remaining:,}]")
+                    st.write("---")
                     
-                    c1, c2 = st.columns(2)
-                    if c1.button("Confirm Release", key=f"conf_{p['id']}"):
+                    # Partial Payment Input
+                    amount_to_pay = st.number_input(
+                        "Enter Amount to Release (₹)", 
+                        min_value=0, 
+                        max_value=remaining, 
+                        step=1000, 
+                        key=f"amt_{p['id']}",
+                        help="You cannot exceed the remaining proposal balance."
+                    )
+                    
+                    p_col1, p_col2 = st.columns(2)
+                    if p_col1.button("Confirm Release", key=f"conf_{p['id']}"):
                         if amount_to_pay > 0:
                             st.session_state.active_projects[i]['paid_history'].append({
                                 "amount": amount_to_pay,
                                 "date": datetime.now().strftime("%Y-%m-%d")
                             })
                             st.session_state.paying_project_id = None
-                            st.success(f"₹{amount_to_pay:,} released successfully!")
+                            st.success(f"Partial payment of ₹{amount_to_pay:,} released successfully!")
                             time.sleep(1)
                             st.rerun()
-                    if c2.button("Cancel", key=f"canc_{p['id']}"):
+                        else:
+                            st.warning("Please enter an amount greater than 0.")
+                            
+                    if p_col2.button("Cancel", key=f"canc_{p['id']}"):
                         st.session_state.paying_project_id = None
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
 
                 col_p1, col_p2 = st.columns([3, 1])
                 col_p1.progress(p['progress'] / 100)
-                col_p2.write(f"Remaining Vault: ₹{remaining:,}")
+                col_p2.write(f"Vault Balance: ₹{remaining:,}")
 
                 m_col1, m_col2 = st.columns(2)
-                if m_col1.button(f"Full Payment / Complete", key=f"comp_{p['id']}"):
-                    st.session_state.active_projects[i]['paid_history'].append({"amount": remaining, "date": datetime.now().strftime("%Y-%m-%d")})
-                    st.rerun()
+                if m_col1.button(f"Settle Full Balance (₹{remaining:,})", key=f"comp_{p['id']}"):
+                    if remaining > 0:
+                        st.session_state.active_projects[i]['paid_history'].append({"amount": remaining, "date": datetime.now().strftime("%Y-%m-%d")})
+                        st.success(f"Full balance of ₹{remaining:,} released!")
+                        time.sleep(1)
+                        st.rerun()
                 if m_col2.button(f"🗑️ Delete Project", key=f"del_{p['id']}"):
                     indices_to_delete.append(i)
         
@@ -279,7 +294,6 @@ if "Business" in user_role:
                     """, unsafe_allow_html=True)
                     
                     if st.button(f"Request Proposal from {agency['name']}", key=f"req_{agency['name']}"):
-                        # Link the proposal request to the Agency Lead Market
                         new_lead = {
                             "id": f"L-{int(time.time())}",
                             "title": st.session_state.generated_brief_data["name"],
@@ -288,12 +302,12 @@ if "Business" in user_role:
                             "requested_from": agency['name']
                         }
                         st.session_state.open_leads.append(new_lead)
-                        st.info(f"Proposal request sent to {agency['name']}. It is now visible in their Lead Market.")
+                        st.info(f"Proposal request sent to {agency['name']}.")
 
 # --- AGENCY PORTAL ---
 else:
     st.title("🚀 Agency Operations Hub")
-    tabs = st.tabs(["💼 Manage Clients", "📩 Client Chat", "🔍 New Market Leads", "💰 Payment Vaults"])
+    tabs = st.tabs(["💼 Manage Clients", "📩 Client Chat", "🔍 New Market Leads", "💰 Payments & Vaults"])
     
     with tabs[0]:
         businesses = list(set([p['business'] for p in st.session_state.active_projects]))
@@ -306,14 +320,19 @@ else:
                     if p['status'] != 'Payment Completed':
                         f_up = st.file_uploader(f"Upload work for {p['name']}", key=f"up_{p['id']}")
                         if f_up and st.button("Submit Work", key=f"btn_{p['id']}"):
-                            st.session_state.project_submissions.append({"project_id": p['id'], "filename": f_up.name, "timestamp": datetime.now().strftime("%H:%M")})
+                            st.session_state.project_submissions.append({
+                                "project_id": p['id'], 
+                                "filename": f_up.name, 
+                                "timestamp": datetime.now().strftime("%H:%M")
+                            })
+                            st.success("Deliverable submitted for client review.")
                             st.rerun()
 
     with tabs[1]:
         render_chat_hub('agency')
 
     with tabs[2]:
-        st.subheader("New Opportunities & Direct Inquiries")
+        st.subheader("Lead Market")
         if st.session_state.open_leads:
             for lead in st.session_state.open_leads:
                 is_direct = lead.get('requested_from') != "General"
@@ -331,16 +350,16 @@ else:
                 """, unsafe_allow_html=True)
                 st.button("Submit Proposal", key=f"bid_{lead['id']}")
         else:
-            st.info("No new leads available at the moment.")
+            st.info("No new leads available.")
 
     with tabs[3]:
-        st.subheader("Secure Pay Vaults & Earnings")
+        st.subheader("Financial Dashboard")
         total_earned = sum(sum(item['amount'] for item in p['paid_history']) for p in st.session_state.active_projects)
         total_vault = sum(p['total_quote'] - sum(item['amount'] for item in p['paid_history']) for p in st.session_state.active_projects)
         
         m1, m2 = st.columns(2)
         m1.metric("Total Agency Earnings", f"₹{total_earned:,}")
-        m2.metric("Secure Vault (Pending)", f"₹{total_vault:,}")
+        m2.metric("Secure Vault (Locked)", f"₹{total_vault:,}")
         
         st.write("### Transaction History")
         pay_data = []
@@ -351,4 +370,4 @@ else:
             st.table(pd.DataFrame(pay_data))
 
 st.markdown("---")
-st.caption("AgencyKart Portal v3.1 | Secure B2B Infrastructure")
+st.caption("AgencyKart Portal v3.2 | Secure B2B Infrastructure")
