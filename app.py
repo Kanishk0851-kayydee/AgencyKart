@@ -73,6 +73,9 @@ if 'active_projects' not in st.session_state:
 if 'brief_generated' not in st.session_state:
     st.session_state.brief_generated = False
 
+if 'generated_brief_data' not in st.session_state:
+    st.session_state.generated_brief_data = {}
+
 if 'project_submissions' not in st.session_state:
     st.session_state.project_submissions = []
 
@@ -169,13 +172,33 @@ if "Business" in user_role:
         with st.form("ai_brief"):
             h = st.text_input("Project Name", placeholder="e.g. E-commerce App")
             d = st.text_area("What are you looking to build?", placeholder="Describe features, goals, and style...")
-            if st.form_submit_button("Generate AI Brief & Match"):
+            # Re-added the Budget Selection Slider
+            budget = st.select_slider(
+                "Select Budget Range", 
+                options=["₹50k - ₹1L", "₹1L - ₹5L", "₹5L - ₹20L", "₹20L+"]
+            )
+            
+            if st.form_submit_button("Generate AI Brief & Match Agencies"):
                 with st.spinner("AI analyzing requirements and vetting agencies..."):
                     time.sleep(1.5)
                     st.session_state.brief_generated = True
+                    st.session_state.generated_brief_data = {
+                        "name": h,
+                        "desc": d,
+                        "budget": budget
+                    }
         
         if st.session_state.brief_generated:
             st.success("✅ Technical Brief Generated! Your project is now being matched with top Indian agencies.")
+            
+            # Show a summary of the generated brief
+            st.markdown(f"""
+            <div class="portal-card" style="border-left: 5px solid #2ec4d1;">
+                <h4 style="color: #2ec4d1;">Brief Summary: {st.session_state.generated_brief_data['name']}</h4>
+                <p><b>Requirements:</b> {st.session_state.generated_brief_data['desc']}</p>
+                <p><b>Target Budget:</b> {st.session_state.generated_brief_data['budget']}</p>
+            </div>
+            """, unsafe_allow_html=True)
             
             st.markdown("### 🎯 Recommended Top Agency Matches")
             for agency in MATCH_AGENCIES:
@@ -257,7 +280,7 @@ else:
         st.button("Submit Proposal for Lead")
 
     with tabs[2]:
-        st.subheader("Secure Pay Vaults (Escrow)")
+        st.subheader("Secure Pay Vaults (Protected Payments)")
         st.metric("Total Funds Protected", f"₹{sum(p['vault'] for p in st.session_state.active_projects if p['status'] != 'Complete'):,}")
         
         # Payment Table
@@ -272,4 +295,4 @@ else:
         st.table(pd.DataFrame(pay_data))
 
 st.markdown("---")
-st.caption("AgencyKart Portal v2.8 | Built for Secure B2B Partnerships")
+st.caption("AgencyKart Portal v2.9 | Built for Secure B2B Partnerships")
