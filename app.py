@@ -36,6 +36,7 @@ st.markdown("""
     .status-done { background-color: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid #34d399; }
     .status-paid { background-color: rgba(46, 196, 209, 0.4); color: #ffffff; border: 1px solid #2ec4d1; }
     .status-neg { background-color: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid #fb923c; }
+    .status-signed { background-color: rgba(46, 196, 209, 0.3); color: #2ec4d1; border: 1px solid #2ec4d1; }
     
     .stButton>button {
         background-color: #2ec4d1;
@@ -63,7 +64,7 @@ st.markdown("""
     
     .match-score { font-size: 24px; color: #2ec4d1; font-weight: bold; }
     
-    .payment-modal {
+    .payment-modal, .contract-viewer {
         background: #020617;
         padding: 25px;
         border-radius: 15px;
@@ -90,6 +91,19 @@ if 'active_projects' not in st.session_state:
         }
     ]
 
+if 'contracts' not in st.session_state:
+    st.session_state.contracts = [
+        {
+            "id": "CON-881",
+            "project_name": "Mobile App UI",
+            "partner": "PixelPerfect",
+            "status": "Awaiting Client Signature",
+            "date_created": "2023-10-01",
+            "signed_by_client": False,
+            "signed_by_agency": True
+        }
+    ]
+
 if 'proposals' not in st.session_state:
     st.session_state.proposals = [
         {
@@ -105,8 +119,6 @@ if 'proposals' not in st.session_state:
 
 if 'brief_generated' not in st.session_state:
     st.session_state.brief_generated = False
-if 'generated_brief_data' not in st.session_state:
-    st.session_state.generated_brief_data = {}
 if 'project_submissions' not in st.session_state:
     st.session_state.project_submissions = []
 if 'messages' not in st.session_state:
@@ -115,31 +127,14 @@ if 'paying_project_id' not in st.session_state:
     st.session_state.paying_project_id = None
 if 'negotiating_prop_id' not in st.session_state:
     st.session_state.negotiating_prop_id = None
-if 'open_leads' not in st.session_state:
-    st.session_state.open_leads = [
-        {"id": "L-001", "title": "Fintech App Design", "desc": "Looking for a high-fidelity dashboard for a personal finance app.", "budget": "₹2.5L", "requested_from": "General"}
-    ]
+if 'viewing_contract_id' not in st.session_state:
+    st.session_state.viewing_contract_id = None
 
 # --- MOCK AGENCY DATA ---
 MATCH_AGENCIES = [
     {"name": "PixelPerfect Digital", "specialization": "UI/UX & Branding", "match": "98%", "bio": "Top-tier design studio focused on conversion-driven aesthetics."},
     {"name": "CodeCrafters India", "specialization": "Full-Stack Web Dev", "match": "92%", "bio": "Experts in scalable MERN stack applications for SMEs."}
 ]
-
-# --- SIDEBAR ---
-with st.sidebar:
-    try:
-        st.image("Logo-1920*1080.jpg", use_container_width=True)
-    except:
-        st.markdown("<h1 style='color: #2ec4d1;'>AgencyKart</h1>", unsafe_allow_html=True)
-        
-    st.markdown("<h2 style='text-align: center; color: #2ec4d1; font-size: 1.1rem;'>PORTAL ACCESS</h2>", unsafe_allow_html=True)
-    st.markdown("---")
-    user_role = st.selectbox("Select Workspace", ["Business Dashboard", "Agency Portal"])
-    st.markdown("---")
-    if st.button("Reset All Portal Data"):
-        st.session_state.clear()
-        st.rerun()
 
 # --- SHARED CHAT ---
 def render_chat_hub(current_role):
@@ -157,10 +152,75 @@ def render_chat_hub(current_role):
                     st.session_state.messages.append({"role": role_key, "text": user_input})
                     st.rerun()
 
+# --- CONTRACT VIEWER COMPONENT ---
+def render_contract_view(contract_id, role):
+    contract = next((c for c in st.session_state.contracts if c['id'] == contract_id), None)
+    if not contract: return
+
+    st.markdown('<div class="contract-viewer">', unsafe_allow_html=True)
+    st.subheader(f"📄 MSA: {contract['project_name']}")
+    st.write(f"**Contract ID:** {contract['id']} | **Created:** {contract['date_created']}")
+    
+    st.markdown("---")
+    st.markdown("""
+    ### Master Service Agreement (Summary)
+    **1. Scope of Work:** The Service Provider agrees to deliver the project as per the AI-generated SOW attached.
+    
+    **2. Payment Terms:** All payments shall be processed via the **AgencyKart Secure Pay Vault**. No payments shall be made outside the platform.
+    
+    **3. Intellectual Property:** Upon final payment release, all source code and design assets shall transfer to the Client.
+    
+    **4. Dispute Resolution:** Any disputes regarding milestone quality will be mediated by AgencyKart's Arbitration Board.
+    """)
+    st.markdown("---")
+    
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if role == "Business Dashboard" and not contract['signed_by_client']:
+            if st.button("🖊️ E-Sign Contract", key=f"sign_btn_{contract_id}"):
+                contract['signed_by_client'] = True
+                contract['status'] = "Fully Executed"
+                st.success("Contract Signed Successfully!")
+                time.sleep(1)
+                st.rerun()
+        elif contract['signed_by_client']:
+            st.success("✅ Signed by Client")
+        else:
+            st.info("⏳ Awaiting Client Signature")
+    
+    with c2:
+        if contract.get('signed_by_agency'):
+            st.success("✅ Signed by Agency")
+        else:
+            if st.button("🖊️ Agency E-Sign", key=f"agency_sign_{contract_id}"):
+                contract['signed_by_agency'] = True
+                st.rerun()
+    
+    with c3:
+        if st.button("Close Viewer", key=f"close_{contract_id}"):
+            st.session_state.viewing_contract_id = None
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    try:
+        st.image("Logo-1920*1080.jpg", use_container_width=True)
+    except:
+        st.markdown("<h1 style='color: #2ec4d1;'>AgencyKart</h1>", unsafe_allow_html=True)
+        
+    st.markdown("<h2 style='text-align: center; color: #2ec4d1; font-size: 1.1rem;'>PORTAL ACCESS</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+    user_role = st.selectbox("Select Workspace", ["Business Dashboard", "Agency Portal"])
+    st.markdown("---")
+    if st.button("Reset All Portal Data"):
+        st.session_state.clear()
+        st.rerun()
+
 # --- BUSINESS DASHBOARD ---
 if "Business" in user_role:
     st.title("🏢 Business Project Portal")
-    tabs = st.tabs(["📊 Projects", "📥 Proposals", "📩 Agency Chat", "📑 Hire & Brief Agencies"])
+    tabs = st.tabs(["📊 Projects", "📥 Proposals", "📜 Contracts", "📩 Agency Chat", "📑 Hire Agencies"])
     
     with tabs[0]:
         indices_to_delete = []
@@ -222,78 +282,54 @@ if "Business" in user_role:
 
     with tabs[1]:
         st.subheader("📥 Incoming Proposals")
-        if not st.session_state.proposals:
-            st.info("No proposals received yet.")
-        else:
-            for idx, prop in enumerate(st.session_state.proposals):
-                with st.container():
-                    st.markdown(f"""
-                    <div class="portal-card">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div>
-                                <h3 style="color: #f8fafc; margin:0;">{prop['project_name']}</h3>
-                                <p style="color: #2ec4d1; font-weight: bold; margin-top:5px;">From: {prop['agency']}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <h2 style="color: #2ec4d1; margin:0;">₹{prop['amount']:,}</h2>
-                                <span class="status-pill status-neg">{prop['status']}</span>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if st.session_state.negotiating_prop_id == prop['id']:
-                        st.markdown('<div class="payment-modal">', unsafe_allow_html=True)
-                        st.write("### 🤝 Pitch Counter Offer")
-                        new_pitch = st.number_input("Your Counter Offer (₹)", value=prop['amount'], step=1000)
-                        neg_col1, neg_col2 = st.columns(2)
-                        if neg_col1.button("Send Counter Offer", key=f"send_neg_{prop['id']}"):
-                            st.session_state.proposals[idx]['amount'] = new_pitch
-                            st.session_state.proposals[idx]['status'] = "Negotiating"
-                            st.session_state.negotiating_prop_id = None
-                            st.toast("Counter offer sent to agency!")
-                            st.rerun()
-                        if neg_col2.button("Cancel", key=f"canc_neg_{prop['id']}"):
-                            st.session_state.negotiating_prop_id = None
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    else:
-                        c_acc, c_neg, c_dec = st.columns(3)
-                        if c_acc.button("Accept Proposal", key=f"acc_{prop['id']}"):
-                            st.session_state.active_projects.append({
-                                "id": f"AK-{int(time.time())}",
-                                "business": prop['business'],
-                                "name": prop['project_name'],
-                                "agency": prop['agency'].replace(" India", "").replace(" Digital", ""),
-                                "status": "In Progress",
-                                "progress": 0,
-                                "total_quote": prop['amount'],
-                                "paid_history": [],
-                                "milestone": "Initiation"
-                            })
-                            st.session_state.proposals.pop(idx)
-                            st.balloons()
-                            st.rerun()
-                        if c_neg.button("Negotiate / Counter", key=f"neg_{prop['id']}"):
-                            st.session_state.negotiating_prop_id = prop['id']
-                            st.rerun()
-                        if c_dec.button("Decline", key=f"dec_{prop['id']}"):
-                            st.session_state.proposals.pop(idx)
-                            st.rerun()
+        for idx, prop in enumerate(st.session_state.proposals):
+            with st.container():
+                st.markdown(f'<div class="portal-card"><b>{prop["project_name"]}</b> (From: {prop["agency"]})<br>Amount: ₹{prop["amount"]:,}</div>', unsafe_allow_html=True)
+                if st.button("Accept & Create Contract", key=f"acc_{prop['id']}"):
+                    st.session_state.active_projects.append({
+                        "id": f"AK-{int(time.time())}", "business": prop['business'], "name": prop['project_name'],
+                        "agency": prop['agency'], "status": "In Progress", "progress": 0, "total_quote": prop['amount'],
+                        "paid_history": [], "milestone": "Initiation"
+                    })
+                    st.session_state.contracts.append({
+                        "id": f"CON-{int(time.time())}", "project_name": prop['project_name'], "partner": prop['agency'],
+                        "status": "Awaiting Client Signature", "date_created": datetime.now().strftime("%Y-%m-%d"), "signed_by_client": False
+                    })
+                    st.session_state.proposals.pop(idx)
+                    st.rerun()
 
     with tabs[2]:
-        render_chat_hub('business')
+        st.subheader("📜 Legal Contracts")
+        if st.session_state.viewing_contract_id:
+            render_contract_view(st.session_state.viewing_contract_id, "Business Dashboard")
+        
+        for contract in st.session_state.contracts:
+            with st.container():
+                st.markdown(f"""
+                <div class="portal-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <b>{contract['project_name']}</b>
+                        <span class="status-pill status-signed">{contract['status']}</span>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 5px;">With: {contract['partner']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("View & Sign Contract", key=f"view_btn_{contract['id']}"):
+                    st.session_state.viewing_contract_id = contract['id']
+                    st.rerun()
 
     with tabs[3]:
+        render_chat_hub('business')
+
+    with tabs[4]:
         st.subheader("AI Briefing & Discovery")
         with st.form("ai_brief"):
             h = st.text_input("Project Name")
             d = st.text_area("Requirements")
             budget = st.select_slider("Budget Range", options=["₹50k - ₹1L", "₹1L - ₹5L", "₹5L - ₹20L", "₹20L+"])
-            if st.form_submit_button("Generate & Match Agencies"):
-                if h and d:
-                    st.session_state.brief_generated = True
-                    st.session_state.generated_brief_data = {"name": h, "desc": d, "budget": budget}
+            if st.form_submit_button("Generate & Match"):
+                st.session_state.brief_generated = True
+                st.session_state.generated_brief_data = {"name": h, "desc": d, "budget": budget}
         
         if st.session_state.brief_generated:
             st.success("✅ AI Brief Ready!")
@@ -302,20 +338,15 @@ if "Business" in user_role:
                     st.markdown(f'<div class="portal-card"><b>{agency["name"]}</b> ({agency["match"]})<br><small>{agency["specialization"]}</small></div>', unsafe_allow_html=True)
                     if st.button(f"Request Proposal from {agency['name']}", key=f"req_{agency['name']}"):
                         st.session_state.proposals.append({
-                            "id": f"PROP-{int(time.time())}",
-                            "business": "Your Company",
-                            "project_name": st.session_state.generated_brief_data["name"],
-                            "agency": agency['name'],
-                            "amount": 0,
-                            "status": "Awaiting Quote",
-                            "history": []
+                            "id": f"PROP-{int(time.time())}", "business": "PVR Cinemas", "project_name": st.session_state.generated_brief_data["name"],
+                            "agency": agency['name'], "amount": 0, "status": "Awaiting Quote", "history": []
                         })
                         st.info(f"Request sent to {agency['name']}.")
 
 # --- AGENCY PORTAL ---
 else:
     st.title("🚀 Agency Operations Hub")
-    tabs = st.tabs(["💼 My Projects", "📩 Client Chat", "🔍 Lead Market", "💰 Payments & Vaults"])
+    tabs = st.tabs(["💼 My Projects", "📜 Contracts", "📩 Client Chat", "🔍 Lead Market", "💰 Payments"])
     
     with tabs[0]:
         businesses = list(set([p['business'] for p in st.session_state.active_projects]))
@@ -332,39 +363,41 @@ else:
                             st.rerun()
 
     with tabs[1]:
-        render_chat_hub('agency')
+        st.subheader("📜 Project Contracts")
+        if st.session_state.viewing_contract_id:
+            render_contract_view(st.session_state.viewing_contract_id, "Agency Portal")
+            
+        for contract in st.session_state.contracts:
+            with st.container():
+                st.markdown(f'<div class="portal-card"><b>{contract["project_name"]}</b><br>Status: {contract["status"]}</div>', unsafe_allow_html=True)
+                if st.button("View Contract", key=f"view_agency_{contract['id']}"):
+                    st.session_state.viewing_contract_id = contract['id']
+                    st.rerun()
 
     with tabs[2]:
-        st.subheader("New Opportunities & Direct Inquiries")
-        # Direct inquiries are listed from proposals with "Awaiting Quote" status
+        render_chat_hub('agency')
+
+    with tabs[3]:
+        st.subheader("New Opportunities")
         direct_inquiries = [p for p in st.session_state.proposals if p['status'] in ["Awaiting Quote", "Negotiating"]]
         if direct_inquiries:
-            for idx, lead in enumerate(direct_inquiries):
-                st.markdown(f"""
-                <div class="portal-card" style="border-left: 5px solid #2ec4d1;">
-                    <b>DIRECT REQUEST: {lead['project_name']}</b><br>
-                    Client: {lead['business']} | Current Status: {lead['status']}<br>
-                    Budget / Counter: ₹{lead['amount']:,}
-                </div>
-                """, unsafe_allow_html=True)
+            for lead in direct_inquiries:
+                st.markdown(f'<div class="portal-card"><b>DIRECT REQUEST: {lead["project_name"]}</b></div>', unsafe_allow_html=True)
                 with st.form(f"submit_prop_{lead['id']}"):
                     quote_val = st.number_input("Your Quote (₹)", value=lead['amount'], step=1000)
-                    if st.form_submit_button("Submit / Update Proposal"):
+                    if st.form_submit_button("Submit Proposal"):
                         for i, p in enumerate(st.session_state.proposals):
                             if p['id'] == lead['id']:
                                 st.session_state.proposals[i]['amount'] = quote_val
                                 st.session_state.proposals[i]['status'] = "Review Required"
-                        st.success("Proposal sent to client!")
                         st.rerun()
 
-    with tabs[3]:
-        st.subheader("Financial Dashboard")
+    with tabs[4]:
+        st.subheader("Earnings Dashboard")
         total_earned = sum(sum(item['amount'] for item in p['paid_history']) for p in st.session_state.active_projects)
         total_vault = sum(p['total_quote'] - sum(item['amount'] for item in p['paid_history']) for p in st.session_state.active_projects)
-        m1, m2 = st.columns(2)
-        m1.metric("Total Agency Earnings", f"₹{total_earned:,}")
-        m2.metric("Secure Vault (Locked)", f"₹{total_vault:,}")
-        st.table(pd.DataFrame([{"Client": p['business'], "Project": p['name'], "Amount": f"₹{payment['amount']:,}", "Date": payment['date']} for p in st.session_state.active_projects for payment in p['paid_history']]))
+        st.metric("Total Agency Earnings", f"₹{total_earned:,}")
+        st.metric("Secure Vault (Locked)", f"₹{total_vault:,}")
 
 st.markdown("---")
-st.caption("AgencyKart Portal v3.5 | End-to-End Negotiation Infrastructure")
+st.caption("AgencyKart Portal v3.6 | Secure B2B Infrastructure")
