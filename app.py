@@ -1,3 +1,4 @@
+# (Lines 1-188 remain unchanged)
 import streamlit as st
 import pandas as pd
 import time
@@ -98,6 +99,14 @@ st.markdown("""
         border-radius: 30px;
         border: 1px solid #2ec4d1;
         box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    /* Centering buttons specifically for Home */
+    .home-btn-container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -272,6 +281,7 @@ with st.sidebar:
 # --- HOME SCREEN ---
 if st.session_state.user_role == "Home":
     st.markdown("<br><br>", unsafe_allow_html=True)
+    # Using specific column ratios to tighten the layout
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         st.markdown("""
@@ -286,15 +296,19 @@ if st.session_state.user_role == "Home":
         """, unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
-        btn_col1, btn_col2 = st.columns(2)
-        with btn_col1:
-            if st.button("🏢 ENTER BUSINESS PORTAL", help="Manage projects and hire agencies"):
-                st.session_state.user_role = "Business Dashboard"
-                st.rerun()
-        with btn_col2:
-            if st.button("🚀 ENTER AGENCY PORTAL", help="Submit work and manage client earnings"):
-                st.session_state.user_role = "Agency Portal"
-                st.rerun()
+        
+        # FIXED: Button alignment using centered columns
+        _, btn_center, _ = st.columns([0.5, 3, 0.5])
+        with btn_center:
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button("🏢 ENTER BUSINESS PORTAL", help="Manage projects and hire agencies"):
+                    st.session_state.user_role = "Business Dashboard"
+                    st.rerun()
+            with btn_col2:
+                if st.button("🚀 ENTER AGENCY PORTAL", help="Submit work and manage client earnings"):
+                    st.session_state.user_role = "Agency Portal"
+                    st.rerun()
 
 # --- BUSINESS DASHBOARD ---
 elif "Business" in st.session_state.user_role:
