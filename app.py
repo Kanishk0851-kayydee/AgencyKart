@@ -89,11 +89,20 @@ st.markdown("""
         pointer-events: none;
         opacity: 0.8;
     }
+
+    /* Welcome Card Styling */
+    .welcome-card {
+        text-align: center;
+        padding: 60px;
+        background: linear-gradient(135deg, #162a4a 0%, #0b1a32 100%);
+        border-radius: 30px;
+        border: 1px solid #2ec4d1;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # --- FLOATING LOGO OVERLAY ---
-# This ensures the logo stays visible even if the sidebar is hidden
 try:
     import base64
     def get_base64(bin_file):
@@ -111,7 +120,6 @@ try:
         unsafe_allow_html=True
     )
 except:
-    # Fallback text watermark if file is missing
     st.markdown(
         """
         <div class="floating-logo-container">
@@ -123,6 +131,9 @@ except:
     )
 
 # --- SESSION STATE INITIALIZATION ---
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = "Home"
+
 if 'active_projects' not in st.session_state:
     st.session_state.active_projects = [
         {
@@ -182,12 +193,6 @@ if 'open_leads' not in st.session_state:
     st.session_state.open_leads = [
         {"id": "L-001", "title": "Fintech App Design", "desc": "Looking for a high-fidelity dashboard for a personal finance app.", "budget": "₹2.5L", "requested_from": "General"}
     ]
-
-# --- MOCK AGENCY DATA ---
-MATCH_AGENCIES = [
-    {"name": "PixelPerfect Digital", "specialization": "UI/UX & Branding", "match": "98%", "bio": "Top-tier design studio focused on conversion-driven aesthetics."},
-    {"name": "CodeCrafters India", "specialization": "Full-Stack Web Dev", "match": "92%", "bio": "Experts in scalable MERN stack applications for SMEs."}
-]
 
 # --- SHARED COMPONENTS ---
 def render_chat_hub(current_role):
@@ -249,16 +254,50 @@ with st.sidebar:
     except:
         st.markdown("<h1 style='color: #2ec4d1;'>AgencyKart</h1>", unsafe_allow_html=True)
         
-    st.markdown("<h2 style='text-align: center; color: #2ec4d1; font-size: 1.1rem;'>PORTAL ACCESS</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #2ec4d1; font-size: 1.1rem;'>NAVIGATION</h2>", unsafe_allow_html=True)
     st.markdown("---")
-    user_role = st.selectbox("Select Workspace", ["Business Dashboard", "Agency Portal"])
+    
+    # Updated sidebar selectbox to include Home
+    st.session_state.user_role = st.selectbox(
+        "Switch Workspace", 
+        ["Home", "Business Dashboard", "Agency Portal"],
+        index=["Home", "Business Dashboard", "Agency Portal"].index(st.session_state.user_role)
+    )
+    
     st.markdown("---")
     if st.button("Reset All Portal Data"):
         st.session_state.clear()
         st.rerun()
 
+# --- HOME SCREEN ---
+if st.session_state.user_role == "Home":
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        st.markdown("""
+        <div class="welcome-card">
+            <h1 style="color: #f8fafc; font-size: 80px; margin-bottom: 0;">AGENCYKART</h1>
+            <h2 style="color: #2ec4d1; letter-spacing: 12px; margin-top: 0; font-size: 32px;">SCALE SMARTER</h2>
+            <p style="font-size: 24px; color: #94a3b8; margin-top: 20px;">
+                The Operating System for Modern B2B Partnerships. <br>
+                Secure payments. AI technical briefing. Vetted matching.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button("🏢 ENTER BUSINESS PORTAL", help="Manage projects and hire agencies"):
+                st.session_state.user_role = "Business Dashboard"
+                st.rerun()
+        with btn_col2:
+            if st.button("🚀 ENTER AGENCY PORTAL", help="Submit work and manage client earnings"):
+                st.session_state.user_role = "Agency Portal"
+                st.rerun()
+
 # --- BUSINESS DASHBOARD ---
-if "Business" in user_role:
+elif "Business" in st.session_state.user_role:
     st.title("🏢 Business Project Portal")
     tabs = st.tabs(["📊 Projects", "📥 Proposals", "📜 Contracts", "📩 Agency Chat", "📑 Hire Agencies"])
     
@@ -409,4 +448,4 @@ else:
         st.table(pd.DataFrame([{"Project": p['name'], "Date": pay['date'], "Amount": f"₹{pay['amount']:,}"} for p in st.session_state.active_projects for pay in p['paid_history']]))
 
 st.markdown("---")
-st.caption("AgencyKart Portal v3.6 | Secure B2B Infrastructure")
+st.caption("AgencyKart Portal v3.7 | Secure B2B Infrastructure")
